@@ -1,6 +1,20 @@
 package main
 
-import "os"
+import (
+	"os"
+
+	"github.com/Sirupsen/logrus"
+)
+
+const (
+	Name = "poagod"
+	Env  = "env"
+
+	Development = "development"
+	Production  = "production"
+
+	Environment = "ENVIRONMENT"
+)
 
 func GetEnv(key, fallback string) string {
 	value := os.Getenv(key)
@@ -10,4 +24,22 @@ func GetEnv(key, fallback string) string {
 	}
 
 	return value
+}
+
+func LoadLogger() *logrus.Logger {
+	log := logrus.New()
+	env := GetEnv(Environment, Development)
+
+	if env == Production {
+		log.Formatter = &logrus.JSONFormatter{}
+	} else {
+		log.Formatter = &logrus.TextFormatter{}
+	}
+
+	log.Out = os.Stdout
+
+	log.SetLevel(logrus.InfoLevel)
+	log.WithField(Env, env)
+
+	return log
 }

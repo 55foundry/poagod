@@ -1,118 +1,48 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"math/big"
+	"flag"
 	"os"
-	"path/filepath"
-	"regexp"
-	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/Sirupsen/logrus"
 )
 
-func (w *wizard) makeGenesis() {
-	fmt.Println("Building new genesis block")
-
-	genesis := &core.Genesis{
-		Timestamp:  uint64(time.Now().Unix()),
-		GasLimit:   4700000,
-		Difficulty: big.NewInt(1), //big.NewInt(524288),
-		Alloc:      make(core.GenesisAlloc),
-		Config: &params.ChainConfig{
-			HomesteadBlock:      big.NewInt(1),
-			EIP150Block:         big.NewInt(2),
-			EIP155Block:         big.NewInt(3),
-			EIP158Block:         big.NewInt(3),
-			ByzantiumBlock:      big.NewInt(4),
-			ConstantinopleBlock: big.NewInt(5),
-			Clique: &params.CliqueConfig{
-				Period: 5,
-				Epoch:  30000,
-			},
-		},
-	}
-
-	fileP := "./addresses.txt"
-	if _, err := os.Stat(fileP); os.IsNotExist(err) {
-	  panic(err)
-	}
-
-	file, err := os.Open(fileP)
-	if err != nil {
-	    panic(err)
-	}
-	defer file.Close()
-
-	var signers []common.Address
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		match := regexp.MustCompile("\\{(.*?)\\}").FindStringSubmatch(line)[1]
-		address := *w.readAddress(match)
-
-		signers = append(signers, address)
-
-		genesis.Alloc[address] = core.GenesisAccount{
-			Balance: new(big.Int).Lsh(big.NewInt(1), 256-7),
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-	    panic(err)
-	}
-
-	genesis.ExtraData = make([]byte, 32+len(signers)*common.AddressLength+65)
-	for i, signer := range signers {
-		copy(genesis.ExtraData[32+i*common.AddressLength:], signer[:])
-	}
-
-	for i := int64(0); i < 256; i++ {
-		genesis.Alloc[common.BigToAddress(big.NewInt(i))] = core.GenesisAccount{Balance: big.NewInt(1)}
-	}
-
-	genesis.Config.ChainID = new(big.Int).SetUint64(uint64(555))
-
-	fmt.Println("Configured new genesis block")
-
-	w.conf.Genesis = genesis
-	w.conf.flush()
-}
-
-func saveGenesis(folder, network, client string, spec interface{}) {
-	var format string
-
-	if (client == "") {
-		format = fmt.Sprintf("%s.json", network)
-	} else {
-		format = fmt.Sprintf("%s-%s.json", network, client)
-	}
-
-	path := filepath.Join(folder, format)
-
-	out, _ := json.Marshal(spec)
-	if err := ioutil.WriteFile(path, out, 0644); err != nil {
-		fmt.Println("Failed to save genesis file", "client", client, "err", err)
-		return
-	}
-
-	fmt.Println("Saved genesis chain spec", "client", client, "path", path)
-}
+// Log - Global Logger variable to use with Logrus instance
+var Log *logrus.Logger
 
 func main() {
-	fmt.Println("Initializing BUtility...")
+	Log = LoadLogger()
 
-	w := wizard{network: GetEnv("ACCOUNT_ID", "55f")}
-	w.makeGenesis()
+	genesisCommand := flag.NewFlagSet("genesis", flag.ExitOnError)
+    nodeCommand := flag.NewFlagSet("node", flag.ExitOnError)
 
-	folder, _ := os.Getwd()
+	genesisCreate := genesisCommand.Bool("create", false, "to create a genesis block file")
+	genesisCreateAddresses := genesisCommand.String("addresses", "./addresses.txt", "path to geth addresses file")
 
-	saveGenesis(folder, w.network, "", w.conf)
+	if len(os.Args) < 2 {
+	    Log.Warn("a command is required to continue")
+	    os.Exit(1)
+	}
+
+	switch os.Args[1] {
+    case "genesis":
+        genesisCommand.Parse(os.Args[2:])
+
+		if (*genesisCreate == true) {
+			Log.Info("Initializing POAGod...")
+
+			w := wizard{network: GetEnv("ACCOUNT_ID", "55f")}
+			w.makeGenesis(*genesisCreateAddresses)
+			w.saveGenesis(w.conf)
+			os.Exit(1)
+		}
+
+		genesisCommand.PrintDefaults()
+    case "node":
+        nodeCommand.Parse(os.Args[2:])
+		nodeCommand.PrintDefaults()
+    default:
+        flag.PrintDefaults()
+        os.Exit(1)
+    }
 }
