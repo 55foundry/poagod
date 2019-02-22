@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/Sirupsen/logrus"
@@ -14,13 +15,24 @@ func main() {
 	Log = LoadLogger()
 
 	genesisCommand := flag.NewFlagSet("genesis", flag.ExitOnError)
+	genesisCommand.Usage = func() {
+	    fmt.Fprintf(os.Stderr, "\033[32mgenesis\033[0m - Manage, create/import a genesis json file.\n")
+	}
     nodeCommand := flag.NewFlagSet("node", flag.ExitOnError)
+	nodeCommand.Usage = func() {
+		fmt.Fprintf(os.Stderr, "\033[32mnode\033[0m - Deploy ethereum nodes and connect to poa.\n")
+	}
 
 	genesisCreate := genesisCommand.Bool("create", false, "to create a genesis block file")
 	genesisCreateAddresses := genesisCommand.String("addresses", "./addresses.txt", "path to geth addresses file")
 
 	if len(os.Args) < 2 {
-	    Log.Warn("a command is required to continue")
+		genesisCommand.Usage()
+	    genesisCommand.PrintDefaults()
+
+		nodeCommand.Usage()
+		nodeCommand.PrintDefaults()
+
 	    os.Exit(1)
 	}
 
@@ -29,17 +41,18 @@ func main() {
         genesisCommand.Parse(os.Args[2:])
 
 		if (*genesisCreate == true) {
-			Log.Info("Initializing POAGod...")
-
 			w := wizard{network: GetEnv("ACCOUNT_ID", "55f")}
 			w.makeGenesis(*genesisCreateAddresses)
 			w.saveGenesis(w.conf)
 			os.Exit(1)
 		}
 
+		genesisCommand.Usage()
 		genesisCommand.PrintDefaults()
     case "node":
         nodeCommand.Parse(os.Args[2:])
+
+		nodeCommand.Usage()
 		nodeCommand.PrintDefaults()
     default:
         flag.PrintDefaults()

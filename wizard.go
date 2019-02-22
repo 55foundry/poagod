@@ -32,7 +32,7 @@ func (c config) flush() {
 
 	out, _ := json.MarshalIndent(c, "", "  ")
 	if err := ioutil.WriteFile(c.path, out, 0644); err != nil {
-		Log.Warn("Failed to save puppeth configs", "file", c.path, "err", err)
+		Log.Warn("Failed to save puppeth config file: ", c.path, "err: ", err)
 	}
 }
 
@@ -109,7 +109,6 @@ func (w *wizard) makeGenesis(addresses string) {
 	Log.Info("Configured new genesis block")
 
 	w.conf.Genesis = genesis
-	w.conf.flush()
 }
 
 func (w *wizard) readAddress(a string) *common.Address {
