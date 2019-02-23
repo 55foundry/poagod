@@ -14,17 +14,24 @@ var Log *logrus.Logger
 func main() {
 	Log = LoadLogger()
 
+	// genesis base command
 	genesisCommand := flag.NewFlagSet("genesis", flag.ExitOnError)
 	genesisCommand.Usage = func() {
 	    fmt.Fprintf(os.Stderr, "\033[32mgenesis\033[0m - Manage, create/import a genesis json file.\n")
 	}
+
+	// genesis flags
+	genesisCreate := genesisCommand.Bool("create", false, "to create a genesis block file")
+	genesisCreateAddresses := genesisCommand.String("addresses", "./addresses.txt", "path to geth addresses file")
+
+	// node base command
     nodeCommand := flag.NewFlagSet("node", flag.ExitOnError)
 	nodeCommand.Usage = func() {
 		fmt.Fprintf(os.Stderr, "\033[32mnode\033[0m - Deploy ethereum nodes and connect to poa.\n")
 	}
 
-	genesisCreate := genesisCommand.Bool("create", false, "to create a genesis block file")
-	genesisCreateAddresses := genesisCommand.String("addresses", "./addresses.txt", "path to geth addresses file")
+	// node flags
+	// ...
 
 	if len(os.Args) < 2 {
 		genesisCommand.Usage()
