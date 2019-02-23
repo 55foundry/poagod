@@ -81,9 +81,16 @@ func (w *wizard) makeGenesis(addresses string) {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		match := regexp.MustCompile("\\{(.*?)\\}").FindStringSubmatch(line)[1]
-		address := *w.readAddress(match)
+		matches := regexp.MustCompile("\\{(.*?)\\}").FindStringSubmatch(line)
 
+		if (len(matches) == 0) {
+			msg := "Matching addresses in file returned 0, invalid file for Ethereum address parsing"
+
+			Log.Error(msg)
+			panic(msg)
+		}
+
+		address := *w.readAddress(matches[1])
 		signers = append(signers, address)
 
 		genesis.Alloc[address] = core.GenesisAccount{
